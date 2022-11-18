@@ -8,4 +8,6 @@ spring:
     config:
       server:
         git:
-          uri:
+          uri: https://github.com/aosur/microservices-project.git
+          https://github:
+            com/aosur/microservices-project/tree/semana1/config-data:
