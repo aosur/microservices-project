@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: account-service
+  cloud:
+    config:
+      username: admin
+      password: $@ns3t
+      uri: http://localhost:8085

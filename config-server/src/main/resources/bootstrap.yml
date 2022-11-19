@@ -8,6 +8,12 @@ spring:
     config:
       server:
         git:
-          uri: https://github.com/aosur/microservices-project.git
-          https://github:
-            com/aosur/microservices-project/tree/semana1/config-data:
+          uri: https://github.com/aosur/config-data.git
+          username: aosur
+          password: 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
+  security:
+    user:
+      name: admin
+      password: $@ns3t
+
+
