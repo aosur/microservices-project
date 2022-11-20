@@ -7,6 +7,9 @@ import java.util.stream.Collectors;
 
 public class AccountRoutine {
 
+    private AccountRoutine() {
+    }
+
     /**
      *returns the account number according to its type
      * @param accounts

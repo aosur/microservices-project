@@ -21,8 +21,8 @@ public class AccountController {
     }
 
     @PostMapping("/accounts")
-    public Mono<Account> register(@RequestBody AccountRequest accountRequest) {
-        return accountService.save(accountRequest.getAccount());
+    public Mono<Account> register(@RequestBody AccountRequest request) {
+        return accountService.save(request);
     }
 
     @GetMapping(path = "/accounts/{id}")
@@ -43,5 +43,10 @@ public class AccountController {
     @GetMapping("/customers/{customerId}")
     public Flux<Account> getByCustomer(@PathVariable("customerId") String customerId) {
         return accountService.getByCustomerId(customerId);
+    }
+
+    @PatchMapping(path = "/accounts/{id}")
+    public Mono<Boolean> validate(@PathVariable("id") String id, @RequestBody AccountRequest request) {
+        return accountService.validateNumberAccounts(request, null);
     }
 }

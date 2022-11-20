@@ -5,17 +5,15 @@ import com.nttdata.customerservice.model.Customer;
 import com.nttdata.customerservice.repository.CustomerRepository;
 import com.nttdata.customerservice.request.CustomerRequest;
 import com.nttdata.customerservice.service.CustomerService;
-import com.nttdata.customerservice.util.AccountRoutine;
-import com.nttdata.customerservice.util.AccountType;
 import com.nttdata.customerservice.util.AppConstant;
-import com.nttdata.customerservice.util.CustomerType;
-import java.util.List;
+import com.nttdata.customerservice.util.CustomerMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -31,9 +29,12 @@ public class CustomerServiceImpl implements CustomerService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CustomerServiceImpl.class);
 
+    private final WebClient.Builder webClientBuilder;
+
     @Autowired
-    public CustomerServiceImpl(CustomerRepository customerRepository) {
+    public CustomerServiceImpl(CustomerRepository customerRepository, WebClient.Builder webClientBuilder) {
         this.customerRepository = customerRepository;
+        this.webClientBuilder = webClientBuilder;
     }
 
     @Override
@@ -87,14 +88,6 @@ public class CustomerServiceImpl implements CustomerService {
     @Override
     public Mono<ResponseEntity<Object>> update(String id, CustomerRequest request) {
         LOGGER.info("deleteById: id={}", id);
-
-        if (!validateNumberAccounts(request)) {
-            LOGGER.warn(AppConstant.NUMBER_OR_TYPE_OF_ACCOUNTS_NOT_ALLOWED, id);
-            return Mono.just(ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE).body(
-                    AppConstant.NUMBER_OR_TYPE_OF_ACCOUNTS_NOT_ALLOWED)
-            );
-        }
-
         return customerRepository.findById(id)
                 .flatMap(customer -> {
                     request.getCustomer().setId(id);
@@ -111,35 +104,21 @@ public class CustomerServiceImpl implements CustomerService {
                 );
     }
 
-    /**
-     * Validates the number of accounts for people and companies.
-     *
-     * @param request a customer request.
-     * @return true if the validation with the number of accounts is correct,
-     * false otherwise
-     */
     @Override
-    public boolean validateNumberAccounts(CustomerRequest request) {
-        Customer customer = request.getCustomer();
-        LOGGER.info("verifyNumberAccounts: customerId={}", customer);
-        List<Account> accounts = customer.getAccounts();
+    public Mono<Customer> getByIdWithAccounts(String id) {
+        LOGGER.info("findByIdWithAccounts: id={}", id);
+        Flux<Account> accounts = webClientBuilder
+                .build()
+                .get()
+                .uri("http://localhost:8083/api/v1/customers/{customerId}", id)
+                .retrieve()
+                .bodyToFlux(Account.class);
 
-        if (customer.getCustomerType().equals(CustomerType.PERSON)) {
-            int checkingCount = AccountRoutine.getCountByAccountType(
-                    accounts, AccountType.CHECKING);
-
-            int fixedCount = AccountRoutine.getCountByAccountType(
-                    accounts, AccountType.FIXED);
-
-            return checkingCount <= 1 && fixedCount <= 1;
-        }
-
-        int savingCount = AccountRoutine.getCountByAccountType(
-                accounts, AccountType.SAVING);
-
-        int fixedCount = AccountRoutine.getCountByAccountType(
-                accounts, AccountType.FIXED);
-
-        return savingCount == 0 && fixedCount == 0;
+        return accounts
+                .collectList()
+                .map(Customer::new)
+                .mergeWith(customerRepository.findById(id))
+                .collectList()
+                .map(CustomerMapper::map);
     }
 }

@@ -28,4 +28,8 @@ public class Customer {
     private BigDecimal creditLimit;
     @Transient
     private List<Account> accounts;
+
+    public Customer(List<Account> accounts) {
+        this.accounts = accounts;
+    }
 }

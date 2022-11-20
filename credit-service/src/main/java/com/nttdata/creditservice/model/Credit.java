@@ -1,6 +1,6 @@
-package com.nttdata.accountservice.model;
+package com.nttdata.creditservice.model;
 
-import com.nttdata.accountservice.util.AccountType;
+import com.nttdata.creditservice.util.CreditType;
 import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -9,21 +9,22 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * Document.
+ */
 @ToString
-@Getter
-@Setter
 @AllArgsConstructor
+@Setter
+@Getter
 @NoArgsConstructor
-@Document(collection = "accounts")
-public class Account {
+@Document(collection = "credits")
+public class Credit {
     @Id
     private String id;
-    private String accountNumber;
+    private String creditNumber;
+    private CreditType creditType;
     private BigDecimal amount;
     private String customerId;
-    private AccountType accountType;
     private LocalDateTime createdAt;
-    private List<String> ownersId;  // Titulares
-    private List<Person> signatories;   // Firmantes
-    private List<Movement> movements;
+    private List<Pago> pagos;
 }

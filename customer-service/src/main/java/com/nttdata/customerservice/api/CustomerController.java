@@ -41,6 +41,11 @@ public class CustomerController {
         return customerService.getById(id);
     }
 
+    @GetMapping(path = "/{id}/with-accounts")
+    public Mono<Customer> getByIdWidthAccounts(@PathVariable("id") String id) {
+        return customerService.getByIdWithAccounts(id);
+    }
+
     @PutMapping (path = "/{id}")
     public Mono<ResponseEntity<Object>> update(
             @PathVariable("id") String id,

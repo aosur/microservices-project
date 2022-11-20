@@ -22,7 +22,6 @@ public interface CustomerService {
     Mono<ResponseEntity<String>> deleteById(String id);
 
     Mono<ResponseEntity<Object>> update(String id, CustomerRequest request);
-//Mono<Customer> update(String id, CustomerRequest request);
 
-    boolean validateNumberAccounts(CustomerRequest request);
+    Mono<Customer> getByIdWithAccounts(String id);
 }

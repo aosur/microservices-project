@@ -10,7 +10,8 @@ spring:
         git:
           uri: https://github.com/aosur/config-data.git
           username: aosur
-          password: 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
+          password: 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
+          default-label: master
   security:
     user:
       name: admin
