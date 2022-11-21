@@ -2,6 +2,8 @@ package com.nttdata.accountservice.service;
 
 import com.nttdata.accountservice.model.Account;
 import com.nttdata.accountservice.request.AccountRequest;
+import com.nttdata.accountservice.request.MovementRequest;
+import org.springframework.http.ResponseEntity;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -17,4 +19,6 @@ public interface AccountService {
     Mono<Account> update(String id, AccountRequest request);
     Flux<Account> getByCustomerId(String customerId);
     Mono<Boolean> validateNumberAccounts(AccountRequest request, String id);
+    Mono<ResponseEntity<Object>> processPayment(
+            MovementRequest movementRequest, String id);
 }

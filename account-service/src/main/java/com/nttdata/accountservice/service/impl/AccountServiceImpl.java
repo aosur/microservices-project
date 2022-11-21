@@ -4,6 +4,7 @@ import com.nttdata.accountservice.model.Account;
 import com.nttdata.accountservice.model.Customer;
 import com.nttdata.accountservice.repository.AccountRepository;
 import com.nttdata.accountservice.request.AccountRequest;
+import com.nttdata.accountservice.request.MovementRequest;
 import com.nttdata.accountservice.service.AccountService;
 import com.nttdata.accountservice.util.AccountRoutine;
 import com.nttdata.accountservice.util.AccountType;
@@ -12,10 +13,14 @@ import com.nttdata.accountservice.util.CustomerType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.math.BigDecimal;
 
 /**
  * Implementation for AccountService interface.
@@ -147,5 +152,25 @@ public class AccountServiceImpl implements AccountService {
                             });
 
                 });
+    }
+
+    @Override
+    public Mono<ResponseEntity<Object>> processPayment(
+            MovementRequest movementRequest, String accountId) {
+        Mono<Account> accountMono = getById(accountId);
+        return accountMono
+                .map(account -> {
+                    BigDecimal add = account.getAmount()
+                            .add(movementRequest.getMovement().getAmount());
+                    account.setAmount(add);
+                    return ResponseEntity
+                            .status(HttpStatus.OK)
+                            .body((Object) accountRepository.save(account));
+                })
+                .switchIfEmpty(Mono.just(ResponseEntity
+                        .status(HttpStatus.NOT_FOUND)
+                        .body(String.format(
+                                AppConstant.ACCOUNT_DOES_NOT_EXIST, accountId)
+                        )));
     }
 }

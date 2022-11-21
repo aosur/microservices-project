@@ -2,8 +2,10 @@ package com.nttdata.accountservice.api;
 
 import com.nttdata.accountservice.model.Account;
 import com.nttdata.accountservice.request.AccountRequest;
+import com.nttdata.accountservice.request.MovementRequest;
 import com.nttdata.accountservice.service.AccountService;
 import lombok.AllArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -51,5 +53,17 @@ public class AccountController {
     @PatchMapping(path = "/accounts/{id}")
     public Mono<Boolean> validate(@PathVariable("id") String id, @RequestBody AccountRequest request) {
         return accountService.validateNumberAccounts(request, null);
+    }
+
+    @GetMapping(path = "/accounts/{id}/exists")
+    public Mono<Boolean> existsById(@PathVariable("id") String id) {
+        return accountService.existsById(id);
+    }
+
+    @PostMapping("/accounts/{id}/payment")
+    public Mono<ResponseEntity<Object>> processPayment(
+            @RequestBody MovementRequest movementRequest,
+            @PathVariable("id") String accountId) {
+        return accountService.processPayment(movementRequest, accountId);
     }
 }

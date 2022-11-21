@@ -3,7 +3,9 @@ package com.nttdata.movementservice.api;
 import com.nttdata.movementservice.model.Movement;
 import com.nttdata.movementservice.request.MovementRequest;
 import com.nttdata.movementservice.service.MovementService;
+import com.nttdata.movementservice.util.ProductType;
 import lombok.AllArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -24,7 +26,7 @@ public class MovementController {
     }
 
     @PostMapping("/movements")
-    public Mono<Movement> register(@RequestBody MovementRequest request) {
+    public Mono<ResponseEntity<Object>> register(@RequestBody MovementRequest request) {
         return movementService.save(request);
     }
 
@@ -47,5 +49,10 @@ public class MovementController {
     @GetMapping("/products/{productId}")
     public Flux<Movement> getByProduct(@PathVariable("productId") String productId) {
         return movementService.getByProductId(productId);
+    }
+
+    @PatchMapping("/products/{productId}")
+    public Mono<ProductType> getProductType(@PathVariable("productId") String productId) {
+        return movementService.checkProductType(productId);
     }
 }

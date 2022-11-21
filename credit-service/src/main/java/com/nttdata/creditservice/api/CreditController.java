@@ -49,4 +49,9 @@ public class CreditController {
         return creditService.validateNumberCredits(request, id);
     }
 
+    @GetMapping(path = "/credits/{id}/exists")
+    public Mono<Boolean> existsById(@PathVariable("id") String id) {
+        return creditService.existsById(id);
+    }
+
 }
