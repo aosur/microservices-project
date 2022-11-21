@@ -8,6 +8,9 @@ import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+/**
+ * Rest Controller.
+ */
 @RestController
 @RequestMapping("api/v1")
 @AllArgsConstructor

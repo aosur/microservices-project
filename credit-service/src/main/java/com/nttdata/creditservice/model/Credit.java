@@ -3,6 +3,7 @@ package com.nttdata.creditservice.model;
 import com.nttdata.creditservice.util.CreditType;
 import lombok.*;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Transient;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.math.BigDecimal;
@@ -26,5 +27,6 @@ public class Credit {
     private BigDecimal amount;
     private String customerId;
     private LocalDateTime createdAt;
-    private List<Pago> pagos;
+    @Transient
+    private List<Movement> movements;
 }

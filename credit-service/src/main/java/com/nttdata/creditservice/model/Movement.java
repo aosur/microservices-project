@@ -11,11 +11,12 @@ import java.time.LocalDateTime;
 /**
  * Support pojo.
  */
-@AllArgsConstructor
-@Setter
 @Getter
+@Setter
 @NoArgsConstructor
-public class Pago {
+@AllArgsConstructor
+public class Movement {
     private BigDecimal amount;
     private LocalDateTime createdAt;
+    private String description;
 }

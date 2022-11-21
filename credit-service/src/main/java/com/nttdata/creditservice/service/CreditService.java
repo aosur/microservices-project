@@ -10,9 +10,11 @@ import reactor.core.publisher.Mono;
  */
 public interface CreditService {
     Flux<Credit> getAll();
-    Mono<Credit> save(Credit credit);
+    Mono<Credit> save(CreditRequest request);
     Mono<Credit> getById(String id);
     Mono<Boolean> existsById(String id);
     Mono<Void> deleteById(String id);
     Mono<Credit> update(String id, CreditRequest request);
+    Flux<Credit> getByCustomerId(String customerId);
+    Mono<Boolean> validateNumberCredits(CreditRequest request, String id);
 }

@@ -87,7 +87,7 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     public Mono<ResponseEntity<Object>> update(String id, CustomerRequest request) {
-        LOGGER.info("deleteById: id={}", id);
+        LOGGER.info("update: id={}", id);
         return customerRepository.findById(id)
                 .flatMap(customer -> {
                     request.getCustomer().setId(id);

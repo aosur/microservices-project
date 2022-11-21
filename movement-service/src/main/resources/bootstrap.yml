@@ -1,6 +1,6 @@
 spring:
   application:
-    name: account-service
+    name: movement-service
   cloud:
     config:
       username: admin

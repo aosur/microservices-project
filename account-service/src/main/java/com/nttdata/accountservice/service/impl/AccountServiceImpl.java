@@ -72,8 +72,7 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     public Mono<Account> update(String id, AccountRequest request) {
-        LOGGER.info("deleteById: id={}", id);
-
+        LOGGER.info("update: id={}", id);
         return validateNumberAccounts(request, id)
                 .flatMap(boo -> {
                     if (!(boolean)boo) {
