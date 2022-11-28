@@ -19,4 +19,9 @@ public interface MovementService {
     Mono<Movement> update(String id, MovementRequest request);
     Flux<Movement> getByProductId(String productId);
     Mono<ProductType> checkProductType(String productId);
+    Flux<Movement> getByProductIdAndDates(
+            String productId,
+            String from,
+            String to
+    );
 }

@@ -7,6 +7,8 @@ import org.springframework.http.ResponseEntity;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
+
 /**
  * Services for accounts.
  */
@@ -18,7 +20,9 @@ public interface AccountService {
     Mono<Void> deleteById(String id);
     Mono<Account> update(String id, AccountRequest request);
     Flux<Account> getByCustomerId(String customerId);
-    Mono<Boolean> validateNumberAccounts(AccountRequest request, String id);
-    Mono<ResponseEntity<Object>> processPayment(
-            MovementRequest movementRequest, String id);
+//    Mono<ResponseEntity<Object>> processPayment(
+//            MovementRequest movementRequest, String id);
+Mono<ResponseEntity<Object>> processPayment(
+        List<MovementRequest> movementsRequest, String id);
+    Mono<ResponseEntity<Object>> accountBalance(String id);
 }

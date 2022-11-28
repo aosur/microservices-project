@@ -2,6 +2,8 @@ package com.nttdata.customerservice.util;
 
 public class AppConstant {
 
+    private AppConstant() {
+    }
     public static final String CUSTOMER_DOES_NOT_EXIST = "customer with id={%s} does not exist";
     public static final String CUSTOMER_DOES_NOT_EXIST_LOGGER = "customer with id={} does not exist";
     public static final String SUCCESSFULLY_REMOVED = "Successfully removed";

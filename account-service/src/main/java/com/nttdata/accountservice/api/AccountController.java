@@ -10,11 +10,13 @@ import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
+
 /**
  * Rest Controller.
  */
 @RestController
-@RequestMapping("api/v1")
+@RequestMapping("/api/v1")
 @AllArgsConstructor
 public class AccountController {
 
@@ -50,20 +52,20 @@ public class AccountController {
         return accountService.getByCustomerId(customerId);
     }
 
-    @PatchMapping(path = "/accounts/{id}")
-    public Mono<Boolean> validate(@PathVariable("id") String id, @RequestBody AccountRequest request) {
-        return accountService.validateNumberAccounts(request, null);
-    }
-
     @GetMapping(path = "/accounts/{id}/exists")
     public Mono<Boolean> existsById(@PathVariable("id") String id) {
         return accountService.existsById(id);
     }
 
-    @PostMapping("/accounts/{id}/payment")
+    @PostMapping("/accounts/{id}/payments")
     public Mono<ResponseEntity<Object>> processPayment(
-            @RequestBody MovementRequest movementRequest,
+            @RequestBody List<MovementRequest> movementRequest,
             @PathVariable("id") String accountId) {
         return accountService.processPayment(movementRequest, accountId);
+    }
+
+    @GetMapping(path = "/accounts/{id}/balances")
+    public Mono<ResponseEntity<Object>> balanceById(@PathVariable("id") String id) {
+        return accountService.accountBalance(id);
     }
 }

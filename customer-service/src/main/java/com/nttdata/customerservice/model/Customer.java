@@ -6,7 +6,6 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Transient;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -25,7 +24,6 @@ public class Customer {
     private String dniRuc;
     private String name;
     private CustomerType customerType;
-    private BigDecimal creditLimit;
     @Transient
     private List<Account> accounts;
 

@@ -26,6 +26,8 @@ public class Credit {
     private CreditType creditType;
     private BigDecimal amount;
     private String customerId;
+    private BigDecimal creditLimit;
+    private LocalDateTime paymentDay;
     private LocalDateTime createdAt;
     @Transient
     private List<Movement> movements;

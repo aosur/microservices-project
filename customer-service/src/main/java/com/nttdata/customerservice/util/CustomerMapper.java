@@ -16,7 +16,6 @@ public class CustomerMapper {
 			if (c.getAccounts() != null) customer.setAccounts(c.getAccounts());
 			if (c.getCustomerType() != null) customer.setCustomerType(c.getCustomerType());
 			if (c.getCustomerNumber() != null) customer.setCustomerNumber(c.getCustomerNumber());
-			if (c.getCreditLimit() != null) customer.setCreditLimit(c.getCreditLimit());
 			if (c.getDniRuc() != null) customer.setDniRuc(c.getDniRuc());
 			if (c.getName() != null) customer.setName(c.getName());
 		}

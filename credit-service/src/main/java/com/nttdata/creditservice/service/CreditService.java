@@ -2,8 +2,12 @@ package com.nttdata.creditservice.service;
 
 import com.nttdata.creditservice.model.Credit;
 import com.nttdata.creditservice.request.CreditRequest;
+import com.nttdata.creditservice.request.MovementRequest;
+import org.springframework.http.ResponseEntity;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.math.BigDecimal;
 
 /**
  * Services for credits.
@@ -17,4 +21,7 @@ public interface CreditService {
     Mono<Credit> update(String id, CreditRequest request);
     Flux<Credit> getByCustomerId(String customerId);
     Mono<Boolean> validateNumberCredits(CreditRequest request, String id);
+    Mono<ResponseEntity<Object>> processPayment(
+            MovementRequest movementRequest, String id);
+    Mono<ResponseEntity<Object>> creditBalance(String id);
 }

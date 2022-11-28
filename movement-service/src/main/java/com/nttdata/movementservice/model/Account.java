@@ -1,6 +1,7 @@
 package com.nttdata.movementservice.model;
 
 import com.nttdata.movementservice.util.AccountType;
+import com.nttdata.movementservice.util.ProductType;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

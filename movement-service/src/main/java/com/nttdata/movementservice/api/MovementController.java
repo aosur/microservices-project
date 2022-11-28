@@ -14,7 +14,7 @@ import reactor.core.publisher.Mono;
  * Rest Controller.
  */
 @RestController
-@RequestMapping("api/v1")
+@RequestMapping("/api/v1")
 @AllArgsConstructor
 public class MovementController {
 
@@ -46,7 +46,7 @@ public class MovementController {
         return movementService.deleteById(id);
     }
 
-    @GetMapping("/products/{productId}")
+    @GetMapping("/products/{productId}/movements")
     public Flux<Movement> getByProduct(@PathVariable("productId") String productId) {
         return movementService.getByProductId(productId);
     }
@@ -54,5 +54,17 @@ public class MovementController {
     @PatchMapping("/products/{productId}")
     public Mono<ProductType> getProductType(@PathVariable("productId") String productId) {
         return movementService.checkProductType(productId);
+    }
+
+    @GetMapping("/products/{productId}/movements/dates")
+    public Flux<Movement> getMovementsByProductBetweenDates(
+            @PathVariable("productId") String productId,
+            @RequestParam("start") String from,
+            @RequestParam("end") String to) {
+        return movementService.getByProductIdAndDates(
+                productId,
+                from,
+                to
+        );
     }
 }

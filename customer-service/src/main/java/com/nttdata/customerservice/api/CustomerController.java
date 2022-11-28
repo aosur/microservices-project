@@ -20,7 +20,7 @@ import reactor.core.publisher.Mono;
  * Rest Controller.
  */
 @RestController
-@RequestMapping("api/v1/customers")
+@RequestMapping("/api/v1/customers")
 @AllArgsConstructor
 public class CustomerController {
 

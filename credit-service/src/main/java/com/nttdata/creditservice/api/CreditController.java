@@ -2,8 +2,10 @@ package com.nttdata.creditservice.api;
 
 import com.nttdata.creditservice.model.Credit;
 import com.nttdata.creditservice.request.CreditRequest;
+import com.nttdata.creditservice.request.MovementRequest;
 import com.nttdata.creditservice.service.CreditService;
 import lombok.AllArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -12,7 +14,7 @@ import reactor.core.publisher.Mono;
  * Rest Controller.
  */
 @RestController
-@RequestMapping("api/v1")
+@RequestMapping("/api/v1")
 @AllArgsConstructor
 public class CreditController {
 
@@ -54,4 +56,20 @@ public class CreditController {
         return creditService.existsById(id);
     }
 
+    @PostMapping("/credits/{id}/payments")
+    public Mono<ResponseEntity<Object>> processPayment(
+            @RequestBody MovementRequest movementRequest,
+            @PathVariable("id") String creditId) {
+        return creditService.processPayment(movementRequest, creditId);
+    }
+
+    @GetMapping(path = "/credits/{id}/balances")
+    public Mono<ResponseEntity<Object>> balanceById(@PathVariable("id") String id) {
+        return creditService.creditBalance(id);
+    }
+
+    @GetMapping(path = "/customers/{id}/credits")
+    public Flux<Credit> getCreditsByCustomer(@PathVariable("id") String customerId) {
+        return creditService.getByCustomerId(customerId);
+    }
 }

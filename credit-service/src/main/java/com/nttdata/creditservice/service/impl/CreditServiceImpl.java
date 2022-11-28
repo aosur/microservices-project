@@ -4,6 +4,7 @@ import com.nttdata.creditservice.model.Credit;
 import com.nttdata.creditservice.model.Customer;
 import com.nttdata.creditservice.repository.CreditRepository;
 import com.nttdata.creditservice.request.CreditRequest;
+import com.nttdata.creditservice.request.MovementRequest;
 import com.nttdata.creditservice.service.CreditService;
 import com.nttdata.creditservice.util.AppConstant;
 import com.nttdata.creditservice.util.CreditRoutine;
@@ -12,10 +13,14 @@ import com.nttdata.creditservice.util.CustomerType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.math.BigDecimal;
 
 @Service
 public class CreditServiceImpl implements CreditService {
@@ -107,7 +112,7 @@ public class CreditServiceImpl implements CreditService {
                 .mergeWith(Mono.just(request.getCredit()));
 
         Mono<Customer> customerMono = webClientBuilder.build().get().uri(
-                        "http://localhost:8082/api/v1/customers/{id}",
+                        AppConstant.CUSTOMER_BY_ID_FROM_CUSTOMER_SERVICE_URI,
                         customerId
                 ).retrieve()
                 .bodyToMono(Customer.class);
@@ -136,5 +141,51 @@ public class CreditServiceImpl implements CreditService {
                             });
 
                 });
+    }
+
+    @Override
+    public Mono<ResponseEntity<Object>> processPayment(
+            MovementRequest movementRequest, String creditId) {
+        LOGGER.info("processPayment: creditId={}", creditId);
+        Mono<Credit> creditMono = getById(creditId);
+        return creditMono
+                .map(credit -> {
+                    BigDecimal add = credit.getAmount()
+                            .add(movementRequest.getMovement().getAmount());
+                    credit.setAmount(add);
+                    return ResponseEntity
+                            .status(HttpStatus.OK)
+                            .body((Object) creditRepository.save(credit));
+                })
+                .switchIfEmpty(Mono.just(ResponseEntity
+                        .status(HttpStatus.NOT_FOUND)
+                        .body(String.format(
+                                AppConstant.CREDIT_DOES_NOT_EXIST, creditId)
+                        )));
+    }
+
+    @Override
+    public Mono<ResponseEntity<Object>> creditBalance(String id) {
+        LOGGER.info("creditBalance: creditId={}", id);
+        return creditRepository
+                .findById(id)
+                .map(credit -> {
+                    if (credit.getCreditType().equals(CreditType.CARD)) {
+                        return ResponseEntity
+                                .status(HttpStatus.OK)
+                                .body((Object) credit
+                                        .getAmount());
+                    }
+                    return ResponseEntity
+                            .status(HttpStatus.NOT_FOUND)
+                            .body((Object) String.format(
+                                    AppConstant.ID_DOES_NOT_BELONG_TO_A_CREDIT_CARD,
+                                    id)
+                            );
+                }).switchIfEmpty(Mono.just(ResponseEntity
+                        .status(HttpStatus.NOT_FOUND)
+                        .body(String.format(
+                                AppConstant.ID_DOES_NOT_BELONG_TO_A_CREDIT_CARD, id)
+                        )));
     }
 }
