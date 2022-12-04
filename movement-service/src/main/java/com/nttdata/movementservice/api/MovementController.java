@@ -67,4 +67,13 @@ public class MovementController {
                 to
         );
     }
+
+    @PostMapping("/transfers")
+    public Mono<ResponseEntity<Object>> transfer(
+            @RequestBody MovementRequest request,
+            @RequestParam("accountIdTo") String accountIdTo) {
+        return movementService.transfer(
+                request,
+                accountIdTo);
+    }
 }

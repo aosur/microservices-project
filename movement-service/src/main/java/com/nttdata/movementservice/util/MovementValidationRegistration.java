@@ -10,7 +10,6 @@ import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
 import java.time.temporal.TemporalAdjusters;
-import java.util.List;
 import java.util.function.Function;
 
 /**
@@ -51,13 +50,9 @@ public interface MovementValidationRegistration
                                     .map(list -> list.size() + 1)
                                     .map(size -> {
                                         String maxMonthMov = account.getAccountType().getMaxMonthMov();
-                                        System.out.println("NUMERO DE MOVIMIENTOS PERMITIDOS: " + maxMonthMov);
-                                        System.out.println("CANTIDAD DE MOV: " + size);
                                         if (size > Integer.parseInt(maxMonthMov)) {
-                                            System.out.println(ValidationResult.EXCEEDED_ALLOWED_MOVEMENTS);
                                             return ValidationResult.EXCEEDED_ALLOWED_MOVEMENTS;
                                         }
-                                        System.out.println(ValidationResult.SUCCESS);
                                         return ValidationResult.SUCCESS;
                                     })
                     ).switchIfEmpty(Mono.just(ValidationResult.SUCCESS));

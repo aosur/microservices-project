@@ -8,6 +8,7 @@ import com.nttdata.accountservice.service.AccountService;
 import com.nttdata.accountservice.util.AccountRegistrationValidation;
 import com.nttdata.accountservice.util.AppConstant;
 import com.nttdata.accountservice.util.ValidationResult;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,8 +21,6 @@ import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
 
 import static com.nttdata.accountservice.util.AccountRegistrationValidation.existsCreditCard;
 import static com.nttdata.accountservice.util.AccountRegistrationValidation.validateMinimunOpeningAmount;
@@ -118,42 +117,21 @@ public class AccountServiceImpl implements AccountService {
         return accountRepository.findByCustomerId(customerId);
     }
 
-//    @Override
-//    public Mono<ResponseEntity<Object>> processPayment(
-//            MovementRequest movementRequest, String accountId) {
-//        LOGGER.info("processPayment: accountId={}", accountId);
-//        Mono<Account> accountMono = getById(accountId);
-//        return accountMono
-//                .map(account -> {
-//                    BigDecimal add = account.getAmount()
-//                            .add(movementRequest.getMovement().getAmount());
-//                    account.setAmount(add);
-//                    return ResponseEntity
-//                            .status(HttpStatus.OK)
-//                            .body((Object) accountRepository.save(account));
-//                })
-//                .switchIfEmpty(Mono.just(ResponseEntity
-//                        .status(HttpStatus.NOT_FOUND)
-//                        .body(String.format(
-//                                AppConstant.ACCOUNT_DOES_NOT_EXIST, accountId)
-//                        )));
-//    }
-
     @Override
+    @CircuitBreaker(name = "cb-instanceA", fallbackMethod = "cbFallBack")
     public Mono<ResponseEntity<Object>> processPayment(
-            List<MovementRequest> movementsRequest, String accountId) {
+            MovementRequest movementRequest, String accountId) {
         LOGGER.info("processPayment: accountId={}", accountId);
         Mono<Account> accountMono = getById(accountId);
         return accountMono
                 .map(account -> {
-                    Optional<BigDecimal> reduce = movementsRequest.stream()
-                            .map(movementRequest -> {
-                                account.getMovements().add(movementRequest.getMovement());
-                                return movementRequest.getMovement().getAmount();
-                            })
-                            .reduce((b1, b2) -> b1.add(b2));
-
-                    reduce.ifPresent(total -> account.setAmount(account.getAmount().add(total)));
+                    BigDecimal add = account
+                            .getAmount()
+                            .add(movementRequest
+                                    .getMovement()
+                                    .getAmount()
+                            );
+                    account.setAmount(add);
                     return ResponseEntity
                             .status(HttpStatus.OK)
                             .body((Object) accountRepository.save(account));
@@ -179,5 +157,17 @@ public class AccountServiceImpl implements AccountService {
                         .body(String.format(
                                 AppConstant.ACCOUNT_DOES_NOT_EXIST, id)
                         )));
+    }
+
+    @SuppressWarnings("All")
+    public Mono<ResponseEntity<Object>> cbFallBack(
+            MovementRequest movementRequest,
+            String accountId,
+            RuntimeException exception) {
+        return Mono.just(
+                ResponseEntity
+                        .status(HttpStatus.NOT_FOUND)
+                        .body(new Object())
+        );
     }
 }

@@ -19,4 +19,5 @@ public class Movement {
     private BigDecimal amount;
     private LocalDateTime createdAt;
     private String description;
+    private BigDecimal amountRemaining;
 }

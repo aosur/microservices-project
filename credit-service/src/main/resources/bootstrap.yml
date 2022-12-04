@@ -7,3 +7,31 @@ spring:
       username: admin
       password: $@ns3t
 
+management:
+  health:
+    circuitbreakers:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+
+resilience4j:
+  timelimiter:
+    configs:
+      default:
+        timeout-duration: 2s
+  circuitbreaker:
+    instances:
+      cb-instanceA:
+        registerHealthIndicator: true
+        eventConsumerBufferSize: 10
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 5
+        failureRateThreshold: 5
+        waitDurationInOpenState: 5s
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true

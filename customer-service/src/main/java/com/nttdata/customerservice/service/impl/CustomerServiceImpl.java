@@ -7,6 +7,7 @@ import com.nttdata.customerservice.request.CustomerRequest;
 import com.nttdata.customerservice.service.CustomerService;
 import com.nttdata.customerservice.util.AppConstant;
 import com.nttdata.customerservice.util.CustomerMapper;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -105,15 +106,27 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     @Override
+    @CircuitBreaker(name = "cb-instanceA", fallbackMethod = "cbFallBack")
     public Mono<Customer> getByIdWithAccounts(String id) {
         LOGGER.info("findByIdWithAccounts: id={}", id);
         Flux<Account> accounts = webClientBuilder
                 .build()
                 .get()
-                .uri("http://localhost:8083/api/v1/customers/{customerId}", id)
+                .uri(AppConstant.ACCOUNTS_BY_CUSTOMER_URI, id)
                 .retrieve()
                 .bodyToFlux(Account.class);
 
+        return accounts
+                .collectList()
+                .map(Customer::new)
+                .mergeWith(customerRepository.findById(id))
+                .collectList()
+                .map(CustomerMapper::map);
+    }
+
+    @SuppressWarnings("All")
+    public Mono<Customer> cbFallBack(String id, RuntimeException exception) {
+        Flux<Account> accounts = Flux.empty();
         return accounts
                 .collectList()
                 .map(Customer::new)

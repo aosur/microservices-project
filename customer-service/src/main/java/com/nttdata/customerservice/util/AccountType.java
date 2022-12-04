@@ -6,5 +6,7 @@ package com.nttdata.customerservice.util;
 public enum AccountType {
     SAVING,    // Ahorro
     CHECKING,   // Cuenta corriente
-    FIXED       // Plazo fijo
-}
+    FIXED,  // Plazo fijo
+    SAVING_VIP,
+    CHECKING_PYME
+    }

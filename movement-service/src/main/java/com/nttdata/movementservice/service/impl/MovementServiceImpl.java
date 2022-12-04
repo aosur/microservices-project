@@ -10,6 +10,7 @@ import com.nttdata.movementservice.util.AppConstant;
 import com.nttdata.movementservice.util.CreditType;
 import com.nttdata.movementservice.util.MovementValidationRegistration;
 import com.nttdata.movementservice.util.ProductType;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,8 +23,6 @@ import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 import static com.nttdata.movementservice.util.AppConstant.ACCOUNT_BY_ID_FROM_ACCOUNT_SERVICE_URI;
 import static com.nttdata.movementservice.util.AppConstant.ACCOUNT_PAYMENT_URI;
@@ -54,6 +53,7 @@ public class MovementServiceImpl implements MovementService {
     }
 
     @Override
+    @CircuitBreaker(name = "cb-instanceA", fallbackMethod = "cbFallBackSave")
     public Mono<ResponseEntity<Object>> save(MovementRequest request) {
         LOGGER.info("save: {}", request.getMovement());
         Mono<ProductType> productTypeMono = checkProductType(
@@ -73,17 +73,14 @@ public class MovementServiceImpl implements MovementService {
                                 ).apply(request.getMovement())
                                 .zipWith(accountMono)
                                 .flatMap(tuple2 -> {
-                                    List<MovementRequest> movements = new ArrayList<>();
                                     if (tuple2.getT1().equals(EXCEEDED_ALLOWED_MOVEMENTS)) {
-                                        System.out.println("ENTRO " + EXCEEDED_ALLOWED_MOVEMENTS);
-                                        movements.add(chargeMovement(
-                                                request.getMovement().getProductId(),
-                                                tuple2.getT2(),
-                                                MOVEMENT_COMMISSION
-                                        ));
+                                        sendPayment(
+                                                chargeMovement(tuple2.getT2()),
+                                                ACCOUNT_PAYMENT_URI,
+                                                Account.class
+                                        ).subscribe();
                                     }
-                                    movements.add(request);
-                                    return sendPayment(movements,
+                                    return sendPayment(request,
                                             ACCOUNT_PAYMENT_URI, Account.class);
                                 });
                     }
@@ -96,58 +93,25 @@ public class MovementServiceImpl implements MovementService {
                                         && !validateCreditLimit(credit, request))
                                 .flatMap(invalidCredit -> Mono.just(ResponseEntity.status(HttpStatus
                                         .BAD_REQUEST).body(
-                                                (Object) String.format(AppConstant.CREDIT_CARD_LIMIT_EXCEEDED,
+                                        (Object) String.format(AppConstant.CREDIT_CARD_LIMIT_EXCEEDED,
                                                 request.getMovement().getProductId()))
                                 ))
                                 // the product has been validated
-                                .switchIfEmpty(sendPayment(List.of(request),
+                                .switchIfEmpty(sendPayment(request,
                                         AppConstant.CREDIT_PAYMENT_URI, Credit.class));
                     }
                     return Mono.just(ResponseEntity.status(HttpStatus
                             .BAD_REQUEST).body(
-                                    String.format(AppConstant.PRODUCT_DOES_NOT_EXIST,
-                                            request.getMovement().getProductId()))
+                            String.format(AppConstant.PRODUCT_DOES_NOT_EXIST,
+                                    request.getMovement().getProductId()))
                     );
                 });
-    }
-
-    private MovementRequest chargeMovement(
-            String productId,
-            Account account,
-            String movementCommission) {
-        return new MovementRequest(
-                new Movement(
-                        null,
-                        productId,
-                        new BigDecimal(
-                                account
-                                        .getAccountType()
-                                        .getMovCommission()
-                        ).abs().negate(),
-                        LocalDateTime.now(),
-                        movementCommission
-                )
-        );
-    }
-
-    private boolean validateCreditLimit(Credit creditCard, MovementRequest request) {
-        return creditCard
-                .getAmount()
-                .add(request.getMovement().getAmount())
-                .abs()
-                .compareTo(creditCard.getCreditLimit()) < 0;
     }
 
     @Override
     public Mono<Movement> getById(String id) {
         LOGGER.info("getById: id={}", id);
         return movementRepository.findById(id);
-    }
-
-    @Override
-    public Mono<Boolean> existsById(String id) {
-        LOGGER.info("existsById: id={}", id);
-        return movementRepository.existsById(id);
     }
 
     @Override
@@ -172,6 +136,84 @@ public class MovementServiceImpl implements MovementService {
         return movementRepository.findByProductId(productId);
     }
 
+    @Override
+    public Flux<Movement> getByProductIdAndDates(
+            String productId,
+            String from,
+            String to) {
+        LOGGER.info("getByProductIdAndDates: productId={}", productId);
+        return movementRepository.findByProductIdAndCreatedAtBetween(
+                productId,
+                LocalDateTime.parse(from),
+                LocalDateTime.parse(to)
+        );
+    }
+
+    @Override
+    @CircuitBreaker(name = "cb-instanceA", fallbackMethod = "cbFallBackTransfer")
+    public Mono<ResponseEntity<Object>> transfer(
+            MovementRequest request,
+            String accountIdTo) {
+        LOGGER.info("sendPayment: {}", request);
+        MovementRequest requestTo = new MovementRequest(
+                new Movement(
+                        null,
+                        accountIdTo,
+                        request.getMovement().getAmount().negate(),
+                        request.getMovement().getCreatedAt(),
+                        request.getMovement().getDescription(),
+                        null
+                )
+        );
+     return sendPayment(request, ACCOUNT_PAYMENT_URI, Account.class)
+             .then(sendPayment(requestTo, ACCOUNT_PAYMENT_URI, Account.class));
+    }
+
+    private Mono<ResponseEntity<Object>> sendPayment(
+            MovementRequest request,
+            String uri,
+            Class<?> clazz) {
+        LOGGER.info("sendPayment: {}", request.getMovement());
+        return webClientBuilder
+                .build()
+                .post()
+                .uri(
+                        uri,
+                        request.getMovement().getProductId()
+                ).bodyValue(request)
+                .retrieve()
+                .toEntity(clazz)
+                .flatMap(response -> {
+                    if (response.getStatusCode().equals(HttpStatus.OK)) {
+                        if (response.getBody() instanceof Account) {
+                            request.getMovement().setAmountRemaining(
+                                    ((Account) response.getBody()).getAmount());
+                        }
+                        if (response.getBody() instanceof Credit) {
+                            BigDecimal amountRemaining = ((Credit) response.getBody())
+                                    .getAmount()
+                                    .add(
+                                            ((Credit) response.getBody()).getCreditLimit()
+                                    );
+                            request.getMovement()
+                                    .setAmountRemaining(
+                                            amountRemaining
+                                    );
+                        }
+                        return movementRepository
+                                .save(request.getMovement())
+                                .map(movement -> ResponseEntity
+                                        .status(HttpStatus.OK)
+                                        .body(movement));
+                    }
+
+                    return Mono.just(ResponseEntity
+                            .status(HttpStatus.BAD_REQUEST)
+                            .body(AppConstant.OPERATION_FAILED));
+                });
+    }
+
+    @Override
     public Mono<ProductType> checkProductType(String productId) {
         LOGGER.info("checkProductType: id={}", productId);
         // checking for Account
@@ -205,74 +247,12 @@ public class MovementServiceImpl implements MovementService {
         });
     }
 
-//    private Mono<ResponseEntity<Object>> sendPayment(
-//            MovementRequest request,
-//            String uri,
-//            Class<?> clazz) {
-//        return webClientBuilder
-//                .build()
-//                .post()
-//                .uri(
-//                        uri,
-//                        request.getMovement().getProductId()
-//                ).bodyValue(request)
-//                .retrieve()
-//                .toEntity(clazz)
-//                .flatMap(objectResponseEntity -> {
-//                    if (objectResponseEntity.getStatusCode().equals(HttpStatus.OK)) {
-//                        return Mono.just(ResponseEntity
-//                                .status(HttpStatus.OK)
-//                                .body(movementRepository.save(request.getMovement())));
-//                    }
-//                    return Mono.just(ResponseEntity
-//                            .status(HttpStatus.BAD_REQUEST)
-//                            .body(AppConstant.OPERATION_FAILED));
-//                });
-//    }
-
-    private Mono<ResponseEntity<Object>> sendPayment(
-            List<MovementRequest> requests,
-            String uri,
-            Class<?> clazz) {
-        return webClientBuilder
-                .build()
-                .post()
-                .uri(
-                        uri,
-                        requests.get(0).getMovement().getProductId()
-                ).bodyValue(List.class)
-                .retrieve()
-                .toEntity(clazz)
-                .flatMap(objectResponseEntity -> {
-                    List<Movement> movements = new ArrayList<>();
-                    requests.stream()
-                            .map(mr -> movements.add(mr.getMovement()));
-                    if (objectResponseEntity.getStatusCode().equals(HttpStatus.OK)) {
-                        return Mono.just(ResponseEntity
-                                .status(HttpStatus.OK)
-                                .body(movementRepository.saveAll(movements)));
-                    }
-                    return Mono.just(ResponseEntity
-                            .status(HttpStatus.BAD_REQUEST)
-                            .body(AppConstant.OPERATION_FAILED));
-                });
-    }
-
     private Mono<Credit> getCreditFromCreditService(String creditId) {
         return webClientBuilder.build().get().uri(
                         AppConstant.CREDIT_FROM_CREDIT_SERVICE_URI,
                         creditId
                 ).retrieve()
                 .bodyToMono(Credit.class);
-    }
-
-    @Override
-    public Flux<Movement> getByProductIdAndDates(String productId, String from, String to) {
-        return movementRepository.findByProductIdAndCreatedAtBetween(
-                productId,
-                LocalDateTime.parse(from),
-                LocalDateTime.parse(to)
-        );
     }
 
     private Mono<Account> getAccountByMovement(
@@ -285,5 +265,49 @@ public class MovementServiceImpl implements MovementService {
                         accountId)
                 .retrieve()
                 .bodyToMono(Account.class);
+    }
+
+    private MovementRequest chargeMovement(Account account) {
+        Movement movement = new Movement(
+                null,
+                account.getId(),
+                new BigDecimal(
+                        account.getAccountType()
+                                .getMovCommission()
+                ).abs().negate(),
+                LocalDateTime.now(),
+                MOVEMENT_COMMISSION,
+                null
+        );
+        return new MovementRequest(movement);
+    }
+
+    private boolean validateCreditLimit(Credit creditCard, MovementRequest request) {
+        return creditCard
+                .getAmount()
+                .add(request.getMovement().getAmount())
+                .abs()
+                .compareTo(creditCard.getCreditLimit()) < 0;
+    }
+
+    @SuppressWarnings("All")
+    private Mono<ResponseEntity<Object>> cbFallBackSave(
+            MovementRequest movementRequest,
+            RuntimeException runtimeException) {
+        return Mono.just(ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                        .body(null)
+                );
+    }
+
+    @SuppressWarnings("All")
+    public Mono<ResponseEntity<Object>> cbFallBackTransfer(
+            MovementRequest request,
+            String accountIdTo,
+            RuntimeException runtimeException) {
+        return Mono.just(ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(null)
+        );
     }
 }

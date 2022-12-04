@@ -7,7 +7,7 @@ import reactor.core.publisher.Flux;
 import java.time.LocalDateTime;
 
 /**
- * Respository for movements.
+ * Repository for movements.
  */
 public interface MovementRepository extends ReactiveMongoRepository<Movement, String> {
     Flux<Movement> findByProductId(String productId);

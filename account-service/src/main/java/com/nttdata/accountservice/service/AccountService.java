@@ -22,7 +22,7 @@ public interface AccountService {
     Flux<Account> getByCustomerId(String customerId);
 //    Mono<ResponseEntity<Object>> processPayment(
 //            MovementRequest movementRequest, String id);
-Mono<ResponseEntity<Object>> processPayment(
-        List<MovementRequest> movementsRequest, String id);
+    Mono<ResponseEntity<Object>> processPayment(
+        MovementRequest movementsRequest, String id);
     Mono<ResponseEntity<Object>> accountBalance(String id);
 }

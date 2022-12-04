@@ -10,8 +10,6 @@ import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.util.List;
-
 /**
  * Rest Controller.
  */
@@ -47,7 +45,7 @@ public class AccountController {
         return accountService.deleteById(id);
     }
 
-    @GetMapping("/customers/{customerId}")
+    @GetMapping("/customers/{customerId}/accounts")
     public Flux<Account> getByCustomer(@PathVariable("customerId") String customerId) {
         return accountService.getByCustomerId(customerId);
     }
@@ -59,7 +57,7 @@ public class AccountController {
 
     @PostMapping("/accounts/{id}/payments")
     public Mono<ResponseEntity<Object>> processPayment(
-            @RequestBody List<MovementRequest> movementRequest,
+            @RequestBody MovementRequest movementRequest,
             @PathVariable("id") String accountId) {
         return accountService.processPayment(movementRequest, accountId);
     }

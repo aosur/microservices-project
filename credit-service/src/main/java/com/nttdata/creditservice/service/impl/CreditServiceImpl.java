@@ -10,6 +10,7 @@ import com.nttdata.creditservice.util.AppConstant;
 import com.nttdata.creditservice.util.CreditRoutine;
 import com.nttdata.creditservice.util.CreditType;
 import com.nttdata.creditservice.util.CustomerType;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -144,6 +145,7 @@ public class CreditServiceImpl implements CreditService {
     }
 
     @Override
+    @CircuitBreaker(name = "cb-instanceA", fallbackMethod = "cbFallBack")
     public Mono<ResponseEntity<Object>> processPayment(
             MovementRequest movementRequest, String creditId) {
         LOGGER.info("processPayment: creditId={}", creditId);
@@ -187,5 +189,17 @@ public class CreditServiceImpl implements CreditService {
                         .body(String.format(
                                 AppConstant.ID_DOES_NOT_BELONG_TO_A_CREDIT_CARD, id)
                         )));
+    }
+
+    @SuppressWarnings("All")
+    public Mono<ResponseEntity<Object>> cbFallBack(
+            MovementRequest movementRequest,
+            String accountId,
+            RuntimeException exception) {
+        return Mono.just(
+                ResponseEntity
+                        .status(HttpStatus.NOT_FOUND)
+                        .body(new Object())
+        );
     }
 }

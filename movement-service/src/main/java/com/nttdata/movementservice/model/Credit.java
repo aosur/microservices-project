@@ -2,10 +2,7 @@ package com.nttdata.movementservice.model;
 
 import com.nttdata.movementservice.util.CreditType;
 import com.nttdata.movementservice.util.ProductType;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;

@@ -5,5 +5,6 @@ spring:
   cloud:
     config:
       uri: http://localhost:8090
+      #uri: http://configserver:8090
       username: admin
       password: $@ns3t
