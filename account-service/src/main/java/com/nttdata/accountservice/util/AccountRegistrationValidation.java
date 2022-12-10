@@ -88,6 +88,25 @@ public interface AccountRegistrationValidation extends Function<Account, Mono<Va
         };
     }
 
+    static AccountRegistrationValidation validateCreditDebtByCustomer(
+            String customerId,
+            WebClient.Builder webClientBuilder) {
+        return account -> {
+            Mono<Boolean> booleanMono = webClientBuilder.build().get().uri(
+                            AppConstant.VALIDATE_CREDIT_DEBT_BY_CUSTOMER_URI,
+                            customerId
+                    ).retrieve()
+                    .bodyToMono(Boolean.class);
+
+            return booleanMono
+                    .map(aBoolean -> {
+                        if (aBoolean != null && aBoolean) {
+                            return ValidationResult.SUCCESS;
+                        }
+                        return ValidationResult.CREDIT_WITH_OVERDUE_DEBT;
+                    });
+        };
+    }
 
     default AccountRegistrationValidation and(AccountRegistrationValidation other) {
         return account -> this.apply(account)

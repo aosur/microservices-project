@@ -2,6 +2,7 @@ package com.nttdata.creditservice.service.impl;
 
 import com.nttdata.creditservice.model.Credit;
 import com.nttdata.creditservice.model.Customer;
+import com.nttdata.creditservice.model.Movement;
 import com.nttdata.creditservice.repository.CreditRepository;
 import com.nttdata.creditservice.request.CreditRequest;
 import com.nttdata.creditservice.request.MovementRequest;
@@ -22,6 +23,9 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+import static com.nttdata.creditservice.util.AppConstant.MOVEMENTS_BY_PRODUCT_URI;
 
 @Service
 public class CreditServiceImpl implements CreditService {
@@ -47,12 +51,19 @@ public class CreditServiceImpl implements CreditService {
     @Override
     public Mono<Credit> save(CreditRequest request) {
         LOGGER.info("save: {}", request.getCredit());
+
         return validateNumberCredits(request, null)
-                .flatMap(boo -> {
-                    if (!(boolean)boo) {
+                .zipWith(validateCreditDebtByCustomer(request.getCredit().getCustomerId()))
+                .flatMap(tuple2 -> {
+                    if (!(boolean)tuple2.getT1()) {
                         LOGGER.warn(AppConstant.NUMBER_OR_TYPE_OF_CREDITS_NOT_ALLOWED);
                         return Mono.empty();
                     }
+                    if (!(boolean)tuple2.getT2()) {
+                        LOGGER.warn(AppConstant.CREDIT_WITH_OVERDUE_DEBT);
+                        return Mono.empty();
+                    }
+                    request.getCredit().setCreatedAt(LocalDateTime.now());
                     return creditRepository.save(request.getCredit());
                 })
                 .switchIfEmpty(Mono.empty());
@@ -80,9 +91,14 @@ public class CreditServiceImpl implements CreditService {
     public Mono<Credit> update(String id, CreditRequest request) {
         LOGGER.info("update: id={}", id);
         return validateNumberCredits(request, id)
-                .flatMap(boo -> {
-                    if (!(boolean)boo) {
+                .zipWith(validateCreditDebtByCustomer(request.getCredit().getCustomerId()))
+                .flatMap(tuple2 -> {
+                    if (!(boolean)tuple2.getT1()) {
                         LOGGER.warn(AppConstant.NUMBER_OR_TYPE_OF_CREDITS_NOT_ALLOWED);
+                        return Mono.empty();
+                    }
+                    if (!(boolean)tuple2.getT2()) {
+                        LOGGER.warn(AppConstant.CREDIT_WITH_OVERDUE_DEBT);
                         return Mono.empty();
                     }
                     return creditRepository.findById(id)
@@ -98,6 +114,23 @@ public class CreditServiceImpl implements CreditService {
         return creditRepository.findByCustomerId(customerId);
     }
 
+    @Override
+    public Flux<Credit> getByCustomerWithMovements(String customerId) {
+        LOGGER.info("getByCustomerIdWithMovements: id={}", customerId);
+        return getByCustomerId(customerId)
+                .flatMap(credit -> webClientBuilder.build().get().uri(
+                                        MOVEMENTS_BY_PRODUCT_URI,
+                                        credit.getId()
+                                ).retrieve()
+                                .bodyToFlux(Movement.class)
+                                .collectList()
+                                .zipWith(Mono.just(credit))
+                                .map(tuple2 -> {
+                                    tuple2.getT2().setMovements(tuple2.getT1());
+                                    return tuple2.getT2();
+                                })
+                );
+    }
     @Override
     public Mono<Boolean> validateNumberCredits(CreditRequest request, String id) {
         String customerId = request.getCredit().getCustomerId();
@@ -123,10 +156,10 @@ public class CreditServiceImpl implements CreditService {
                     if (customer.getCustomerType().equals(CustomerType.PERSON)) {
                         return creditFlux.collectList()
                                 .map(credits -> {
-                                    int personCount = CreditRoutine.getCountByAccountType(
+                                    int personCount = CreditRoutine.getCountByCreditType(
                                             credits, CreditType.PERSON);
 
-                                    int enterpriseCount = CreditRoutine.getCountByAccountType(
+                                    int enterpriseCount = CreditRoutine.getCountByCreditType(
                                             credits, CreditType.ENTERPRISE);
 
                                     return personCount <= 1 && enterpriseCount == 0;
@@ -135,7 +168,7 @@ public class CreditServiceImpl implements CreditService {
 
                     return creditFlux.collectList()
                             .map(credits -> {
-                                int personCount = CreditRoutine.getCountByAccountType(
+                                int personCount = CreditRoutine.getCountByCreditType(
                                         credits, CreditType.PERSON);
 
                                 return personCount == 0;
@@ -189,6 +222,16 @@ public class CreditServiceImpl implements CreditService {
                         .body(String.format(
                                 AppConstant.ID_DOES_NOT_BELONG_TO_A_CREDIT_CARD, id)
                         )));
+    }
+
+    @Override
+    public Mono<Boolean> validateCreditDebtByCustomer(String customerId) {
+        LOGGER.info("validateCreditDebtByCustomer: customerId={}", customerId);
+        return creditRepository
+                .findByCustomerId(customerId)
+                .all(credit -> credit.getAmount().compareTo(BigDecimal.ZERO) >= 0
+                        || LocalDateTime.now().compareTo(credit.getPaymentDay()) <= 0);
+
     }
 
     @SuppressWarnings("All")

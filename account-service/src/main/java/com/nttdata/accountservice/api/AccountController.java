@@ -50,6 +50,11 @@ public class AccountController {
         return accountService.getByCustomerId(customerId);
     }
 
+    @GetMapping("/customers/{customerId}/accounts/with-movements")
+    public Flux<Account> getByCustomerWithMovements(@PathVariable("customerId") String customerId) {
+        return accountService.getByCustomerWithMovements(customerId);
+    }
+
     @GetMapping(path = "/accounts/{id}/exists")
     public Mono<Boolean> existsById(@PathVariable("id") String id) {
         return accountService.existsById(id);

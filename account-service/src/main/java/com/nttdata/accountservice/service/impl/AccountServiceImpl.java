@@ -1,6 +1,7 @@
 package com.nttdata.accountservice.service.impl;
 
 import com.nttdata.accountservice.model.Account;
+import com.nttdata.accountservice.model.Movement;
 import com.nttdata.accountservice.repository.AccountRepository;
 import com.nttdata.accountservice.request.AccountRequest;
 import com.nttdata.accountservice.request.MovementRequest;
@@ -23,7 +24,9 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import static com.nttdata.accountservice.util.AccountRegistrationValidation.existsCreditCard;
+import static com.nttdata.accountservice.util.AccountRegistrationValidation.validateCreditDebtByCustomer;
 import static com.nttdata.accountservice.util.AccountRegistrationValidation.validateMinimunOpeningAmount;
+import static com.nttdata.accountservice.util.AppConstant.MOVEMENTS_BY_PRODUCT_URI;
 
 /**
  * Implementation for AccountService interface.
@@ -56,6 +59,10 @@ public class AccountServiceImpl implements AccountService {
                         accountRepository)
                 .and(existsCreditCard(webClientBuilder))
                 .and(validateMinimunOpeningAmount())
+                .and(validateCreditDebtByCustomer(
+                        request.getAccount().getCustomerId(),
+                        webClientBuilder
+                ))
                 .apply(request.getAccount())
                 .flatMap(validationResult -> {
                     if (validationResult.equals(ValidationResult.SUCCESS)) {
@@ -96,6 +103,10 @@ public class AccountServiceImpl implements AccountService {
                         accountRepository)
                 .and(existsCreditCard(webClientBuilder))
                 .and(validateMinimunOpeningAmount())
+                .and(validateCreditDebtByCustomer(
+                        request.getAccount().getCustomerId(),
+                        webClientBuilder
+                ))
                 .apply(request.getAccount())
                 .flatMap(validationResult -> {
                     if (validationResult.equals(ValidationResult.SUCCESS)) {
@@ -115,6 +126,24 @@ public class AccountServiceImpl implements AccountService {
     public Flux<Account> getByCustomerId(String customerId) {
         LOGGER.info("getByCustomerId: id={}", customerId);
         return accountRepository.findByCustomerId(customerId);
+    }
+
+    @Override
+    public Flux<Account> getByCustomerWithMovements(String customerId) {
+        LOGGER.info("getByCustomerIdWithMovements: id={}", customerId);
+        return getByCustomerId(customerId)
+                .flatMap(account -> webClientBuilder.build().get().uri(
+                                MOVEMENTS_BY_PRODUCT_URI,
+                                        account.getId()
+                                ).retrieve()
+                                .bodyToFlux(Movement.class)
+                                .collectList()
+                                .zipWith(Mono.just(account))
+                                .map(tuple2 -> {
+                                    tuple2.getT2().setMovements(tuple2.getT1());
+                                    return tuple2.getT2();
+                                })
+                );
     }
 
     @Override

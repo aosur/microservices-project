@@ -18,8 +18,10 @@ public interface CreditService {
     Mono<Void> deleteById(String id);
     Mono<Credit> update(String id, CreditRequest request);
     Flux<Credit> getByCustomerId(String customerId);
+    Flux<Credit> getByCustomerWithMovements(String customerId);
     Mono<Boolean> validateNumberCredits(CreditRequest request, String id);
     Mono<ResponseEntity<Object>> processPayment(
             MovementRequest movementRequest, String id);
     Mono<ResponseEntity<Object>> creditBalance(String id);
+    Mono<Boolean> validateCreditDebtByCustomer(String customerId);
 }

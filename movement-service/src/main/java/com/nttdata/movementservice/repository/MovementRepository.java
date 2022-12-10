@@ -12,4 +12,5 @@ import java.time.LocalDateTime;
 public interface MovementRepository extends ReactiveMongoRepository<Movement, String> {
     Flux<Movement> findByProductId(String productId);
     Flux<Movement> findByProductIdAndCreatedAtBetween(String productId, LocalDateTime from, LocalDateTime to);
+    Flux<Movement> findByCardId(String cardId);
 }

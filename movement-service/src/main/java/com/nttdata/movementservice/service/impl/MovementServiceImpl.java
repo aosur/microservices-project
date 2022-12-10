@@ -14,6 +14,7 @@ import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -24,9 +25,7 @@ import reactor.core.publisher.Mono;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-import static com.nttdata.movementservice.util.AppConstant.ACCOUNT_BY_ID_FROM_ACCOUNT_SERVICE_URI;
-import static com.nttdata.movementservice.util.AppConstant.ACCOUNT_PAYMENT_URI;
-import static com.nttdata.movementservice.util.AppConstant.MOVEMENT_COMMISSION;
+import static com.nttdata.movementservice.util.AppConstant.*;
 import static com.nttdata.movementservice.util.ValidationResult.EXCEEDED_ALLOWED_MOVEMENTS;
 
 /**
@@ -74,11 +73,13 @@ public class MovementServiceImpl implements MovementService {
                                 .zipWith(accountMono)
                                 .flatMap(tuple2 -> {
                                     if (tuple2.getT1().equals(EXCEEDED_ALLOWED_MOVEMENTS)) {
-                                        sendPayment(
+                                        System.out.println(EXCEEDED_ALLOWED_MOVEMENTS);
+                                        return sendPayment(
                                                 chargeMovement(tuple2.getT2()),
                                                 ACCOUNT_PAYMENT_URI,
                                                 Account.class
-                                        ).subscribe();
+                                        ).then(sendPayment(request,
+                                                ACCOUNT_PAYMENT_URI, Account.class));
                                     }
                                     return sendPayment(request,
                                             ACCOUNT_PAYMENT_URI, Account.class);
@@ -98,7 +99,7 @@ public class MovementServiceImpl implements MovementService {
                                 ))
                                 // the product has been validated
                                 .switchIfEmpty(sendPayment(request,
-                                        AppConstant.CREDIT_PAYMENT_URI, Credit.class));
+                                        CREDIT_PAYMENT_URI, Credit.class));
                     }
                     return Mono.just(ResponseEntity.status(HttpStatus
                             .BAD_REQUEST).body(
@@ -137,6 +138,11 @@ public class MovementServiceImpl implements MovementService {
     }
 
     @Override
+    public Flux<Movement> getByCardId(String cardId) {
+        return movementRepository.findByCardId(cardId);
+    }
+
+    @Override
     public Flux<Movement> getByProductIdAndDates(
             String productId,
             String from,
@@ -153,20 +159,31 @@ public class MovementServiceImpl implements MovementService {
     @CircuitBreaker(name = "cb-instanceA", fallbackMethod = "cbFallBackTransfer")
     public Mono<ResponseEntity<Object>> transfer(
             MovementRequest request,
-            String accountIdTo) {
-        LOGGER.info("sendPayment: {}", request);
-        MovementRequest requestTo = new MovementRequest(
-                new Movement(
-                        null,
-                        accountIdTo,
-                        request.getMovement().getAmount().negate(),
-                        request.getMovement().getCreatedAt(),
-                        request.getMovement().getDescription(),
-                        null
-                )
-        );
-     return sendPayment(request, ACCOUNT_PAYMENT_URI, Account.class)
-             .then(sendPayment(requestTo, ACCOUNT_PAYMENT_URI, Account.class));
+            String productIdTo) {
+        LOGGER.info("transfer: {}", request.getMovement());
+        return save(request)
+                .flatMap(response -> {
+                    if (response.getStatusCode().equals(HttpStatus.OK)) {
+                        Movement movement = Movement.builder()
+                                .id(null)
+                                .productId(productIdTo)
+                                .amount(request.getMovement().getAmount().negate())
+                                .createdAt(request.getMovement().getCreatedAt())
+                                .description(request.getMovement().getDescription())
+                                .cardId(null)
+                                .amountRemaining(null)
+                                .build();
+
+                        MovementRequest requestTo = MovementRequest.builder()
+                                .movement(movement)
+                                .build();
+
+                        return save(requestTo);
+                    }
+                    return Mono.just(ResponseEntity
+                            .status(HttpStatus.NOT_FOUND)
+                            .body(OPERATION_FAILED));
+                });
     }
 
     private Mono<ResponseEntity<Object>> sendPayment(
@@ -184,27 +201,35 @@ public class MovementServiceImpl implements MovementService {
                 .retrieve()
                 .toEntity(clazz)
                 .flatMap(response -> {
+                    System.out.println("RESPONSE..." + response.getBody());
                     if (response.getStatusCode().equals(HttpStatus.OK)) {
                         if (response.getBody() instanceof Account) {
+                            System.out.println("ENTRO INSTANCIA ACCOUNT");
                             request.getMovement().setAmountRemaining(
                                     ((Account) response.getBody()).getAmount());
                         }
                         if (response.getBody() instanceof Credit) {
-                            BigDecimal amountRemaining = ((Credit) response.getBody())
-                                    .getAmount()
-                                    .add(
-                                            ((Credit) response.getBody()).getCreditLimit()
-                                    );
+                            System.out.println("ENTRO INSTANCIA CREDIT");
                             request.getMovement()
                                     .setAmountRemaining(
-                                            amountRemaining
-                                    );
+                                            ((Credit) response.getBody()).getAmount());
                         }
+
+                        if (request.getMovement().getCreatedAt() == null) {
+                            request.getMovement()
+                                    .setCreatedAt(LocalDateTime.now());
+                        }
+
                         return movementRepository
                                 .save(request.getMovement())
-                                .map(movement -> ResponseEntity
+                                .map(movement -> {
+                                    System.out.println(movement);
+                                    return ResponseEntity
                                         .status(HttpStatus.OK)
-                                        .body(movement));
+                                        .body(
+                                          movementRepository.findById(movement.getId())
+                                        );
+                                });
                     }
 
                     return Mono.just(ResponseEntity
@@ -277,6 +302,7 @@ public class MovementServiceImpl implements MovementService {
                 ).abs().negate(),
                 LocalDateTime.now(),
                 MOVEMENT_COMMISSION,
+                null,
                 null
         );
         return new MovementRequest(movement);
@@ -294,6 +320,7 @@ public class MovementServiceImpl implements MovementService {
     private Mono<ResponseEntity<Object>> cbFallBackSave(
             MovementRequest movementRequest,
             RuntimeException runtimeException) {
+        LOGGER.info("cbFallBackSave: {}", movementRequest.getMovement());
         return Mono.just(ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
                         .body(null)
@@ -305,6 +332,7 @@ public class MovementServiceImpl implements MovementService {
             MovementRequest request,
             String accountIdTo,
             RuntimeException runtimeException) {
+        LOGGER.info("cbFallBackTransfer: {}", request.getMovement());
         return Mono.just(ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
                 .body(null)

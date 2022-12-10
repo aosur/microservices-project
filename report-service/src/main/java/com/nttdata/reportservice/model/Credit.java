@@ -8,6 +8,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @AllArgsConstructor
 @Setter
@@ -21,4 +22,5 @@ public class Credit {
     private String customerId;
     private BigDecimal creditLimit;
     private LocalDateTime createdAt;
+    private List<Movement> movements;
 }

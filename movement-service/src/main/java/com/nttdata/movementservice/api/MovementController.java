@@ -35,6 +35,11 @@ public class MovementController {
         return movementService.getById(id);
     }
 
+    @GetMapping(path = "/cards/{cardId}/movements")
+    public Flux<Movement> getByCard(@PathVariable("cardId") String id) {
+        return movementService.getByCardId(id);
+    }
+
     @PutMapping (path = "/movements/{id}")
     public Mono<Movement> update(@PathVariable("id") String id,
                                  @RequestBody MovementRequest request) {
@@ -71,9 +76,9 @@ public class MovementController {
     @PostMapping("/transfers")
     public Mono<ResponseEntity<Object>> transfer(
             @RequestBody MovementRequest request,
-            @RequestParam("accountIdTo") String accountIdTo) {
+            @RequestParam("productIdTo") String productIdTo) {
         return movementService.transfer(
                 request,
-                accountIdTo);
+                productIdTo);
     }
 }

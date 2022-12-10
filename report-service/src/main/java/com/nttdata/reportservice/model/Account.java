@@ -8,6 +8,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @Setter
@@ -20,4 +21,5 @@ public class Account {
     private String customerId;
     private AccountType accountType;
     private LocalDateTime createdAt;
+    private List<Movement> movements;
 }

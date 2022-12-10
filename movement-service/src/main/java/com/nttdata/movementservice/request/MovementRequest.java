@@ -1,10 +1,7 @@
 package com.nttdata.movementservice.request;
 
 import com.nttdata.movementservice.model.Movement;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 /**
  * Request For movements.
@@ -13,6 +10,7 @@ import lombok.Setter;
 @AllArgsConstructor
 @Getter
 @Setter
+@Builder
 public class MovementRequest {
 
     private Movement movement;

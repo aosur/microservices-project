@@ -13,6 +13,8 @@ public class AppConstant {
     public static final String ACCOUNT_DOES_NOT_EXIST = "account with id={%s} does not exist";
     public static final String CUSTOMER_BY_ID_FROM_CUSTOMER_SERVICE_URI = "http://localhost:8082/api/v1/customers/{id}";
     public static final String CREDITS_BY_CUSTOMER_FROM_CREDIT_SERVICE_URI = "http://localhost:8084/api/v1/customers/{customerId}/credits";
+    public static final String VALIDATE_CREDIT_DEBT_BY_CUSTOMER_URI = "http://localhost:8084/api/v1/customers/{customerId}/debts";
+    public static final String MOVEMENTS_BY_PRODUCT_URI = "http://localhost:8085/api/v1/products/{productId}/movements";
     // ACCOUNT TYPE
     public static final String SAVING_ACCOUNT_MAINTENANCE = "3.00";
     public static final String SAVING_ACCOUNT_MAX_MONTH_MOV = "5";

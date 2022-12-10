@@ -19,6 +19,7 @@ public interface MovementService {
     Mono<Void> deleteById(String id);
     Mono<Movement> update(String id, MovementRequest request);
     Flux<Movement> getByProductId(String productId);
+    Flux<Movement> getByCardId(String cardId);
     Mono<ProductType> checkProductType(String productId);
     Flux<Movement> getByProductIdAndDates(
             String productId,

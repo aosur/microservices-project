@@ -12,11 +12,11 @@ public class CreditRoutine {
 
     /**
      *returns the account number according to its type
-     * @param accounts
-     * @param accountType
+     * @param credits
+     * @param creditType
      * @return
      */
-    public static int getCountByAccountType(List<Credit> credits, CreditType creditType) {
+    public static int getCountByCreditType(List<Credit> credits, CreditType creditType) {
         return credits.stream()
                 .filter(credit -> credit.getCreditType()
                         .equals(creditType)

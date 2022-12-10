@@ -1,10 +1,6 @@
 package com.nttdata.movementservice.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
+import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -19,6 +15,7 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 @Document(collection = "movements")
 public class Movement {
     @Id
@@ -27,5 +24,6 @@ public class Movement {
     private BigDecimal amount;
     private LocalDateTime createdAt;
     private String description;
+    private String cardId;
     private BigDecimal amountRemaining;
 }

@@ -72,4 +72,14 @@ public class CreditController {
     public Flux<Credit> getCreditsByCustomer(@PathVariable("id") String customerId) {
         return creditService.getByCustomerId(customerId);
     }
+
+    @GetMapping(path = "/customers/{id}/credits/with-movements")
+    public Flux<Credit> getCreditsByCustomerWithMovements(@PathVariable("id") String customerId) {
+        return creditService.getByCustomerWithMovements(customerId);
+    }
+
+    @GetMapping(path = "/customers/{id}/debts")
+    public Mono<Boolean> validateCreditDebtByCustomer(@PathVariable("id") String customerId) {
+        return creditService.validateCreditDebtByCustomer(customerId);
+    }
 }
